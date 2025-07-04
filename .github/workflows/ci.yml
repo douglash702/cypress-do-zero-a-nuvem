@@ -1,71 +1,33 @@
-# .github/workflows/cypress-tests.yml
-
-name: Cypress E2E Tests
-
-# Dispara o workflow em cada push para qualquer branch
-on: push
-
+name: Cypress Tests
+on: [push]
 jobs:
   cypress-run:
-    # Define o sistema operacional para executar o job. ubuntu-22.04 é mais recente e recomendado.
-    runs-on: ubuntu-22.04
-
-    # Estratégia de matriz para paralelização: executa os testes em múltiplas instâncias
+    runs-on: ubuntu-latest
+    # Runs tests in parallel with matrix strategy https://docs.cypress.io/guides/guides/parallelization
+    # https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+    # Also see warning here https://github.com/cypress-io/github-action#parallel
     strategy:
-      # Não falhar rapidamente se um container falhar, permitindo que outros terminem
-      fail-fast: false
+      fail-fast: false # https://github.com/cypress-io/github-action/issues/48
       matrix:
-        # Define o número de containers/instâncias paralelas para rodar os testes
-        containers: [1, 2] # Você pode ajustar este número (ex: [1, 2, 3])
-
+        containers: [1, 2] # Uses 2 parallel instances
     steps:
-      # 1. Checkout do código do seu repositório
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      # 2. Configura a versão do Node.js
-      # Usar Node.js 18 é uma boa escolha, mas verifique a compatibilidade do seu projeto.
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      # 3. Instala as dependências do seu projeto, incluindo o Cypress
-      # É crucial rodar 'npm ci' (clean install) para instalações mais consistentes em CI
-      # ou 'npm install' se você não tiver um package-lock.json/yarn.lock.
-      - name: Install Project Dependencies
-        run: npm ci # Use 'npm install' se 'npm ci' der problemas ou se não usar lock files
-
-      # 4. Executa os testes Cypress
-      - name: Cypress Run
-        # Utiliza a ação oficial do Cypress para GitHub Actions
+      - name: Cypress run
+        # Uses the official Cypress GitHub action https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v6
         with:
-          # Inicia o seu servidor web para testes E2E.
-          # Substitua 'npm start' pelo comando que inicia sua aplicação web.
-          # Ex: se sua aplicação usa 'npm run dev', use 'npm run dev'.
+          # Starts web server for E2E tests - replace with your own server invocation
+          # https://docs.cypress.io/guides/continuous-integration/introduction#Boot-your-server
           start: npm start
-          # Espera que o servidor esteja acessível antes de iniciar os testes
-          wait-on: 'http://localhost:3000' # Ajuste a URL e porta se sua aplicação for diferente
-          # Define o navegador para execução dos testes. 'chrome' é uma boa opção.
-          browser: chrome
-          # Habilita a gravação de resultados no Cypress Cloud
+          wait-on: 'http://localhost:3000' # Waits for above
+          # Records to Cypress Cloud 
+          # https://docs.cypress.io/guides/cloud/projects#Set-up-a-project-to-record
           record: true
-          # Habilita a execução paralela de testes, conforme definido na estratégia de matriz
-          parallel: true
-
+          parallel: true # Runs test in parallel using settings above
         env:
-          # Variáveis de ambiente necessárias para a gravação e paralelização no Cypress Cloud.
-          # Estes segredos devem ser configurados no seu repositório GitHub (Settings -> Secrets -> Actions).
+          # For recording and parallelization to work you must set your CYPRESS_RECORD_KEY
+          # in GitHub repo → Settings → Secrets → Actions
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Usado pela ação do Cypress para relatar o status
-
-      # Opcional: Upload de artefatos (vídeos e screenshots) em caso de falha
-      # Isso ajuda na depuração de testes flaky.
-      - name: Upload Cypress artifacts on failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: cypress-results
-          path: cypress/videos
-          path: cypress/screenshots 
+          # Creating a token https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
