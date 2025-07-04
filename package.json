@@ -8,7 +8,7 @@
     "cy:open:mobile": "cypress open --config viewportWidth=410,viewportHeight=860",
     "test": "cypress run",
     "st": "cypress run --config viewportWidth=410,viewportHeight=860",
-    "testeCloud": "cypress run --record"
+    "teste:cloud": "cypress run --record"
   },
   "devDependencies": {
     "cypress": "^14.5.1"
