@@ -1,18 +1,71 @@
-name: End-to-end tests
+# .github/workflows/cypress-tests.yml
+
+name: Cypress E2E Tests
+
+# Dispara o workflow em cada push para qualquer branch
 on: push
+
 jobs:
   cypress-run:
+    # Define o sistema operacional para executar o job. ubuntu-22.04 é mais recente e recomendado.
     runs-on: ubuntu-22.04
+
+    # Estratégia de matriz para paralelização: executa os testes em múltiplas instâncias
+    strategy:
+      # Não falhar rapidamente se um container falhar, permitindo que outros terminem
+      fail-fast: false
+      matrix:
+        # Define o número de containers/instâncias paralelas para rodar os testes
+        containers: [1, 2] # Você pode ajustar este número (ex: [1, 2, 3])
+
     steps:
-      - name: Checkout
+      # 1. Checkout do código do seu repositório
+      - name: Checkout Repository
         uses: actions/checkout@v4
+
+      # 2. Configura a versão do Node.js
+      # Usar Node.js 18 é uma boa escolha, mas verifique a compatibilidade do seu projeto.
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
-      - name: Install Cypress
-        run: npm install cypress --save-dev
-      - name: Cypress run
+
+      # 3. Instala as dependências do seu projeto, incluindo o Cypress
+      # É crucial rodar 'npm ci' (clean install) para instalações mais consistentes em CI
+      # ou 'npm install' se você não tiver um package-lock.json/yarn.lock.
+      - name: Install Project Dependencies
+        run: npm ci # Use 'npm install' se 'npm ci' der problemas ou se não usar lock files
+
+      # 4. Executa os testes Cypress
+      - name: Cypress Run
+        # Utiliza a ação oficial do Cypress para GitHub Actions
         uses: cypress-io/github-action@v6
         with:
+          # Inicia o seu servidor web para testes E2E.
+          # Substitua 'npm start' pelo comando que inicia sua aplicação web.
+          # Ex: se sua aplicação usa 'npm run dev', use 'npm run dev'.
+          start: npm start
+          # Espera que o servidor esteja acessível antes de iniciar os testes
+          wait-on: 'http://localhost:3000' # Ajuste a URL e porta se sua aplicação for diferente
+          # Define o navegador para execução dos testes. 'chrome' é uma boa opção.
           browser: chrome
+          # Habilita a gravação de resultados no Cypress Cloud
+          record: true
+          # Habilita a execução paralela de testes, conforme definido na estratégia de matriz
+          parallel: true
+
+        env:
+          # Variáveis de ambiente necessárias para a gravação e paralelização no Cypress Cloud.
+          # Estes segredos devem ser configurados no seu repositório GitHub (Settings -> Secrets -> Actions).
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Usado pela ação do Cypress para relatar o status
+
+      # Opcional: Upload de artefatos (vídeos e screenshots) em caso de falha
+      # Isso ajuda na depuração de testes flaky.
+      - name: Upload Cypress artifacts on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-results
+          path: cypress/videos
+          path: cypress/screenshots 
